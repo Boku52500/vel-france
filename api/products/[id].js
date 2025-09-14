@@ -22,34 +22,44 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const products = await sql`
+      const rows = await sql`
         SELECT 
           id,
           name,
           description,
-          description_en AS "descriptionEnglish",
-          description_ka AS "descriptionGeorgian",
           price,
           brand,
           category,
-          categories,
-          image_url AS "imageUrl",
+          image_url,
           capacity,
-          0::int AS "discountPercentage",
-          true AS "inStock",
-          created_at AS "createdAt"
+          created_at
         FROM products 
         WHERE id = ${id}
         LIMIT 1
       `;
-      if (!products || products.length === 0) {
+      if (!rows || rows.length === 0) {
         return res.status(404).json({ message: 'Product not found' });
       }
-      const p = products[0];
-      return res.status(200).json({
-        ...p,
-        categories: typeof p.categories === 'string' ? JSON.parse(p.categories || '[]') : (p.categories || []),
-      });
+      const r = rows[0];
+      const product = {
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        descriptionEnglish: null,
+        descriptionGeorgian: null,
+        price: r.price,
+        brand: r.brand,
+        category: r.category,
+        categories: [],
+        imageUrl: r.image_url
+          ? (r.image_url.startsWith('http') ? r.image_url : (r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`))
+          : null,
+        capacity: r.capacity,
+        discountPercentage: 0,
+        inStock: true,
+        createdAt: r.created_at,
+      };
+      return res.status(200).json(product);
     }
 
     res.status(405).json({ message: 'Method not allowed' });

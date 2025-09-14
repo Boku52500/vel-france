@@ -17,33 +17,38 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const products = await sql`
+      const rows = await sql`
         SELECT 
           id,
           name,
           description,
-          description_en AS "descriptionEnglish",
-          description_ka AS "descriptionGeorgian",
           price,
           brand,
           category,
-          categories,
-          image_url AS "imageUrl",
+          image_url,
           capacity,
-          0::int AS "discountPercentage",
-          true AS "inStock",
-          created_at AS "createdAt"
+          created_at
         FROM products 
         ORDER BY name ASC
       `;
 
-      // Normalize categories in case it's stored as text
-      const normalized = products.map(p => ({
-        ...p,
-        categories: typeof p.categories === 'string' ? JSON.parse(p.categories || '[]') : (p.categories || []),
-        imageUrl: p.imageUrl
-          ? (p.imageUrl.startsWith('http') ? p.imageUrl : (p.imageUrl.startsWith('/') ? p.imageUrl : `/${p.imageUrl}`))
+      const normalized = rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        descriptionEnglish: null,
+        descriptionGeorgian: null,
+        price: r.price,
+        brand: r.brand,
+        category: r.category,
+        categories: [],
+        imageUrl: r.image_url
+          ? (r.image_url.startsWith('http') ? r.image_url : (r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`))
           : null,
+        capacity: r.capacity,
+        discountPercentage: 0,
+        inStock: true,
+        createdAt: r.created_at,
       }));
 
       return res.status(200).json(normalized);
@@ -52,33 +57,32 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       const { name, description, price, brand, category, imageUrl, capacity, categories, descriptionEn, descriptionKa } = req.body;
       
-      const [product] = await sql`
-        INSERT INTO products (id, name, description, price, brand, category, image_url, capacity, categories, description_en, description_ka)
-        VALUES (${randomUUID()}, ${name}, ${description}, ${price}, ${brand}, ${category}, ${imageUrl}, ${capacity}, ${JSON.stringify(categories || [])}, ${descriptionEn}, ${descriptionKa})
-        RETURNING 
-          id,
-          name,
-          description,
-          description_en AS "descriptionEnglish",
-          description_ka AS "descriptionGeorgian",
-          price,
-          brand,
-          category,
-          categories,
-          image_url AS "imageUrl",
-          capacity,
-          0::int AS "discountPercentage",
-          true AS "inStock",
-          created_at AS "createdAt"
+      const [inserted] = await sql`
+        INSERT INTO products (id, name, description, price, brand, category, image_url, capacity)
+        VALUES (${randomUUID()}, ${name}, ${description}, ${price}, ${brand}, ${category}, ${imageUrl}, ${capacity})
+        RETURNING id, name, description, price, brand, category, image_url, capacity, created_at
       `;
-      
-      return res.status(201).json({
-        ...product,
-        categories: typeof product.categories === 'string' ? JSON.parse(product.categories || '[]') : (product.categories || []),
-        imageUrl: product.imageUrl
-          ? (product.imageUrl.startsWith('http') ? product.imageUrl : (product.imageUrl.startsWith('/') ? product.imageUrl : `/${product.imageUrl}`))
+
+      const product = {
+        id: inserted.id,
+        name: inserted.name,
+        description: inserted.description,
+        descriptionEnglish: null,
+        descriptionGeorgian: null,
+        price: inserted.price,
+        brand: inserted.brand,
+        category: inserted.category,
+        categories: [],
+        imageUrl: inserted.image_url
+          ? (inserted.image_url.startsWith('http') ? inserted.image_url : (inserted.image_url.startsWith('/') ? inserted.image_url : `/${inserted.image_url}`))
           : null,
-      });
+        capacity: inserted.capacity,
+        discountPercentage: 0,
+        inStock: true,
+        createdAt: inserted.created_at,
+      };
+      
+      return res.status(201).json(product);
     }
 
     res.status(405).json({ message: 'Method not allowed' });
