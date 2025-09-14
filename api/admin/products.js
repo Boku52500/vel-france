@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { randomUUID } from 'crypto';
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
       
       const [product] = await sql`
         INSERT INTO products (id, name, description, price, brand, category, image_url, capacity, categories, description_en, description_ka)
-        VALUES (${crypto.randomUUID()}, ${name}, ${description}, ${price}, ${brand}, ${category}, ${imageUrl}, ${capacity}, ${JSON.stringify(categories)}, ${descriptionEn}, ${descriptionKa})
+        VALUES (${randomUUID()}, ${name}, ${description}, ${price}, ${brand}, ${category}, ${imageUrl}, ${capacity}, ${JSON.stringify(categories)}, ${descriptionEn}, ${descriptionKa})
         RETURNING *
       `;
       

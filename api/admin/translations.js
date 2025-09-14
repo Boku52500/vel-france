@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { randomUUID } from 'crypto';
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
       
       const [translation] = await sql`
         INSERT INTO translations (id, key, english, georgian)
-        VALUES (${crypto.randomUUID()}, ${key}, ${english}, ${georgian})
+        VALUES (${randomUUID()}, ${key}, ${english}, ${georgian})
         ON CONFLICT (key) DO UPDATE SET
           english = EXCLUDED.english,
           georgian = EXCLUDED.georgian
