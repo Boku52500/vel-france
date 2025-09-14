@@ -17,32 +17,63 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const orders = await sql`
-        SELECT 
-          id,
-          order_code AS "orderCode",
-          total_amount AS "totalAmount",
-          items AS "orderItems",
-          customer_info AS "customerInfo",
-          status,
-          created_at AS "createdAt"
-        FROM orders 
-        ORDER BY created_at DESC
-      `;
-      
-      return res.status(200).json(orders);
+      try {
+        const orders = await sql`
+          SELECT 
+            id,
+            order_code AS "orderCode",
+            total_amount AS "totalAmount",
+            items AS "orderItems",
+            customer_info AS "customerInfo",
+            status,
+            created_at AS "createdAt"
+          FROM orders 
+          ORDER BY created_at DESC
+        `;
+        return res.status(200).json(orders);
+      } catch (e) {
+        // Fallback to shared schema: total, no items/customer_info columns
+        const fallback = await sql`
+          SELECT 
+            id,
+            order_code AS "orderCode",
+            total AS "totalAmount",
+            '[]'::json AS "orderItems",
+            '{}'::json AS "customerInfo",
+            status,
+            created_at AS "createdAt"
+          FROM orders 
+          ORDER BY created_at DESC
+        `;
+        return res.status(200).json(fallback);
+      }
     }
 
     if (req.method === 'POST') {
       const { orderCode, totalAmount, items, customerInfo } = req.body;
       
-      const [order] = await sql`
-        INSERT INTO orders (id, order_code, total_amount, items, customer_info, status)
-        VALUES (${randomUUID()}, ${orderCode}, ${totalAmount}, ${JSON.stringify(items)}, ${JSON.stringify(customerInfo)}, 'pending')
-        RETURNING id, order_code AS "orderCode", total_amount AS "totalAmount", items AS "orderItems", customer_info AS "customerInfo", status, created_at AS "createdAt"
-      `;
-      
-      return res.status(201).json(order);
+      try {
+        const [order] = await sql`
+          INSERT INTO orders (id, order_code, total_amount, items, customer_info, status)
+          VALUES (${randomUUID()}, ${orderCode}, ${totalAmount}, ${JSON.stringify(items)}, ${JSON.stringify(customerInfo)}, 'pending')
+          RETURNING id, order_code AS "orderCode", total_amount AS "totalAmount", items AS "orderItems", customer_info AS "customerInfo", status, created_at AS "createdAt"
+        `;
+        return res.status(201).json(order);
+      } catch (e) {
+        // Fallback to shared schema: columns total, shipping_address, billing_address
+        const shippingAddress = JSON.stringify(customerInfo || {});
+        const billingAddress = shippingAddress;
+        const [order] = await sql`
+          INSERT INTO orders (id, order_code, total, shipping_address, billing_address, status)
+          VALUES (${randomUUID()}, ${orderCode}, ${totalAmount}, ${shippingAddress}, ${billingAddress}, 'pending')
+          RETURNING id, order_code AS "orderCode", total AS "totalAmount", status, created_at AS "createdAt"
+        `;
+        return res.status(201).json({
+          ...order,
+          orderItems: [],
+          customerInfo: customerInfo || {},
+        });
+      }
     }
 
     res.status(405).json({ message: 'Method not allowed' });
