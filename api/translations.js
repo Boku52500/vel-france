@@ -17,18 +17,32 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const translations = await sql`
-        SELECT 
-          id,
-          key,
-          english AS "englishText",
-          georgian AS "georgianText",
-          created_at AS "createdAt"
-        FROM translations 
-        ORDER BY key ASC
-      `;
-      
-      return res.status(200).json(translations);
+      try {
+        const translations = await sql`
+          SELECT 
+            id,
+            key,
+            english AS "englishText",
+            georgian AS "georgianText",
+            created_at AS "createdAt"
+          FROM translations 
+          ORDER BY key ASC
+        `;
+        return res.status(200).json(translations);
+      } catch (e) {
+        // Fallback for legacy schema with english_text/georgian_text columns
+        const legacy = await sql`
+          SELECT 
+            id,
+            key,
+            english_text AS "englishText",
+            georgian_text AS "georgianText",
+            created_at AS "createdAt"
+          FROM translations 
+          ORDER BY key ASC
+        `;
+        return res.status(200).json(legacy);
+      }
     }
 
     if (req.method === 'POST') {

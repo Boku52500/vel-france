@@ -17,7 +17,12 @@ export default async function handler(req, res) {
 
   try {
     // Simple session-based cart using cookie or IP
-    const sessionId = req.headers['x-session-id'] || req.connection.remoteAddress || 'anonymous';
+    const sessionId =
+      req.headers['x-session-id'] ||
+      req.headers['x-forwarded-for'] ||
+      (req.socket && req.socket.remoteAddress) ||
+      (req.connection && req.connection.remoteAddress) ||
+      'anonymous';
 
     if (req.method === 'GET') {
       const rows = await sql`
