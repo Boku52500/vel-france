@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { randomUUID } from 'crypto';
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -19,14 +20,39 @@ export default async function handler(req, res) {
     const sessionId = req.headers['x-session-id'] || req.connection.remoteAddress || 'anonymous';
 
     if (req.method === 'GET') {
-      const cartItems = await sql`
-        SELECT c.*, p.name, p.brand, p.price, p.image_url, p.capacity
+      const rows = await sql`
+        SELECT 
+          c.id AS cart_id,
+          c.product_id,
+          c.quantity,
+          c.created_at,
+          p.id AS product_id2,
+          p.name,
+          p.brand,
+          p.price,
+          p.image_url,
+          p.capacity
         FROM cart_items c
         JOIN products p ON c.product_id = p.id
         WHERE c.session_id = ${sessionId}
         ORDER BY c.created_at DESC
       `;
-      
+
+      const cartItems = rows.map((r) => ({
+        id: r.cart_id,
+        productId: r.product_id,
+        quantity: r.quantity,
+        createdAt: r.created_at,
+        product: {
+          id: r.product_id2,
+          name: r.name,
+          brand: r.brand,
+          price: r.price,
+          imageUrl: r.image_url,
+          capacity: r.capacity,
+        },
+      }));
+
       return res.status(200).json(cartItems);
     }
 
@@ -41,21 +67,82 @@ export default async function handler(req, res) {
 
       if (existingItem) {
         // Update quantity
-        const [updatedItem] = await sql`
+        await sql`
           UPDATE cart_items 
           SET quantity = quantity + ${quantity}
           WHERE session_id = ${sessionId} AND product_id = ${productId}
-          RETURNING *
         `;
-        return res.status(200).json(updatedItem);
+        const updatedJoined = await sql`
+          SELECT 
+            c.id AS cart_id,
+            c.product_id,
+            c.quantity,
+            c.created_at,
+            p.id AS product_id2,
+            p.name,
+            p.brand,
+            p.price,
+            p.image_url,
+            p.capacity
+          FROM cart_items c
+          JOIN products p ON c.product_id = p.id
+          WHERE c.session_id = ${sessionId} AND c.product_id = ${productId}
+          LIMIT 1
+        `;
+        const r = updatedJoined[0];
+        return res.status(200).json({
+          id: r.cart_id,
+          productId: r.product_id,
+          quantity: r.quantity,
+          createdAt: r.created_at,
+          product: {
+            id: r.product_id2,
+            name: r.name,
+            brand: r.brand,
+            price: r.price,
+            imageUrl: r.image_url,
+            capacity: r.capacity,
+          },
+        });
       } else {
         // Add new item
-        const [newItem] = await sql`
-          INSERT INTO cart_items (session_id, product_id, quantity)
-          VALUES (${sessionId}, ${productId}, ${quantity})
-          RETURNING *
+        await sql`
+          INSERT INTO cart_items (id, session_id, product_id, quantity)
+          VALUES (${randomUUID()}, ${sessionId}, ${productId}, ${quantity})
         `;
-        return res.status(201).json(newItem);
+        const joined = await sql`
+          SELECT 
+            c.id AS cart_id,
+            c.product_id,
+            c.quantity,
+            c.created_at,
+            p.id AS product_id2,
+            p.name,
+            p.brand,
+            p.price,
+            p.image_url,
+            p.capacity
+          FROM cart_items c
+          JOIN products p ON c.product_id = p.id
+          WHERE c.session_id = ${sessionId} AND c.product_id = ${productId}
+          ORDER BY c.created_at DESC
+          LIMIT 1
+        `;
+        const r = joined[0];
+        return res.status(201).json({
+          id: r.cart_id,
+          productId: r.product_id,
+          quantity: r.quantity,
+          createdAt: r.created_at,
+          product: {
+            id: r.product_id2,
+            name: r.name,
+            brand: r.brand,
+            price: r.price,
+            imageUrl: r.image_url,
+            capacity: r.capacity,
+          },
+        });
       }
     }
 

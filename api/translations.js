@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { randomUUID } from 'crypto';
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -17,7 +18,13 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const translations = await sql`
-        SELECT * FROM translations 
+        SELECT 
+          id,
+          key,
+          english AS "englishText",
+          georgian AS "georgianText",
+          created_at AS "createdAt"
+        FROM translations 
         ORDER BY key ASC
       `;
       
@@ -28,8 +35,8 @@ export default async function handler(req, res) {
       const { key, english, georgian } = req.body;
       
       const [translation] = await sql`
-        INSERT INTO translations (key, english, georgian)
-        VALUES (${key}, ${english}, ${georgian})
+        INSERT INTO translations (id, key, english, georgian)
+        VALUES (${randomUUID()}, ${key}, ${english}, ${georgian})
         ON CONFLICT (key) DO UPDATE SET
           english = EXCLUDED.english,
           georgian = EXCLUDED.georgian

@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { randomUUID } from 'crypto';
 
 const sql = neon(process.env.DATABASE_URL);
 
@@ -17,7 +18,15 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const orders = await sql`
-        SELECT * FROM orders 
+        SELECT 
+          id,
+          order_code AS "orderCode",
+          total_amount AS "totalAmount",
+          items AS "orderItems",
+          customer_info AS "customerInfo",
+          status,
+          created_at AS "createdAt"
+        FROM orders 
         ORDER BY created_at DESC
       `;
       
@@ -28,9 +37,9 @@ export default async function handler(req, res) {
       const { orderCode, totalAmount, items, customerInfo } = req.body;
       
       const [order] = await sql`
-        INSERT INTO orders (order_code, total_amount, items, customer_info, status)
-        VALUES (${orderCode}, ${totalAmount}, ${JSON.stringify(items)}, ${JSON.stringify(customerInfo)}, 'pending')
-        RETURNING *
+        INSERT INTO orders (id, order_code, total_amount, items, customer_info, status)
+        VALUES (${randomUUID()}, ${orderCode}, ${totalAmount}, ${JSON.stringify(items)}, ${JSON.stringify(customerInfo)}, 'pending')
+        RETURNING id, order_code AS "orderCode", total_amount AS "totalAmount", items AS "orderItems", customer_info AS "customerInfo", status, created_at AS "createdAt"
       `;
       
       return res.status(201).json(order);
