@@ -47,8 +47,9 @@ declare global {
 
 function ProductDetailPage() {
   const { t, i18n } = useTranslation();
-  const [, params] = useRoute("/product/:id");
-  const productId = params?.id;
+  const [matchKa, paramsKa] = useRoute("/product/:id");
+  const [matchEn, paramsEn] = useRoute("/en/product/:id");
+  const productId = paramsKa?.id || paramsEn?.id;
   const [quantity, setQuantity] = useState(1);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -205,7 +206,7 @@ function ProductDetailPage() {
   }
 
   // Single product image
-  const productImage = product.imageUrl || "/placeholder-perfume.jpg";
+  const productImage = product.imageUrl || "/assets/10_1753734237960.png";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cream via-white to-cream/50">

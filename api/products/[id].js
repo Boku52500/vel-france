@@ -22,11 +22,34 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const products = await sql`SELECT * FROM products WHERE id = ${id} LIMIT 1`;
+      const products = await sql`
+        SELECT 
+          id,
+          name,
+          description,
+          description_en AS "descriptionEnglish",
+          description_ka AS "descriptionGeorgian",
+          price,
+          brand,
+          category,
+          categories,
+          image_url AS "imageUrl",
+          capacity,
+          0::int AS "discountPercentage",
+          true AS "inStock",
+          created_at AS "createdAt"
+        FROM products 
+        WHERE id = ${id}
+        LIMIT 1
+      `;
       if (!products || products.length === 0) {
         return res.status(404).json({ message: 'Product not found' });
       }
-      return res.status(200).json(products[0]);
+      const p = products[0];
+      return res.status(200).json({
+        ...p,
+        categories: typeof p.categories === 'string' ? JSON.parse(p.categories || '[]') : (p.categories || []),
+      });
     }
 
     res.status(405).json({ message: 'Method not allowed' });

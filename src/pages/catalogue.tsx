@@ -94,7 +94,7 @@ function LuxuryProductCard({ product, index = 0 }: { product: Product; index?: n
           className="w-full h-full"
         >
           <LazyImage
-            src={product.imageUrl || "/placeholder-perfume.jpg"}
+            src={product.imageUrl || "/assets/10_1753734237960.png"}
             alt={product.name}
             className="w-full h-full object-cover"
             sizes="(max-width: 640px) 300px, (max-width: 1024px) 350px, 400px"

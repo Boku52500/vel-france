@@ -18,11 +18,35 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const products = await sql`
-        SELECT * FROM products 
+        SELECT 
+          id,
+          name,
+          description,
+          description_en AS "descriptionEnglish",
+          description_ka AS "descriptionGeorgian",
+          price,
+          brand,
+          category,
+          categories,
+          image_url AS "imageUrl",
+          capacity,
+          0::int AS "discountPercentage",
+          true AS "inStock",
+          created_at AS "createdAt"
+        FROM products 
         ORDER BY name ASC
       `;
-      
-      return res.status(200).json(products);
+
+      // Normalize categories in case it's stored as text
+      const normalized = products.map(p => ({
+        ...p,
+        categories: typeof p.categories === 'string' ? JSON.parse(p.categories || '[]') : (p.categories || []),
+        imageUrl: p.imageUrl
+          ? (p.imageUrl.startsWith('http') ? p.imageUrl : (p.imageUrl.startsWith('/') ? p.imageUrl : `/${p.imageUrl}`))
+          : null,
+      }));
+
+      return res.status(200).json(normalized);
     }
 
     if (req.method === 'POST') {
@@ -30,11 +54,31 @@ export default async function handler(req, res) {
       
       const [product] = await sql`
         INSERT INTO products (id, name, description, price, brand, category, image_url, capacity, categories, description_en, description_ka)
-        VALUES (${randomUUID()}, ${name}, ${description}, ${price}, ${brand}, ${category}, ${imageUrl}, ${capacity}, ${categories}, ${descriptionEn}, ${descriptionKa})
-        RETURNING *
+        VALUES (${randomUUID()}, ${name}, ${description}, ${price}, ${brand}, ${category}, ${imageUrl}, ${capacity}, ${JSON.stringify(categories || [])}, ${descriptionEn}, ${descriptionKa})
+        RETURNING 
+          id,
+          name,
+          description,
+          description_en AS "descriptionEnglish",
+          description_ka AS "descriptionGeorgian",
+          price,
+          brand,
+          category,
+          categories,
+          image_url AS "imageUrl",
+          capacity,
+          0::int AS "discountPercentage",
+          true AS "inStock",
+          created_at AS "createdAt"
       `;
       
-      return res.status(201).json(product);
+      return res.status(201).json({
+        ...product,
+        categories: typeof product.categories === 'string' ? JSON.parse(product.categories || '[]') : (product.categories || []),
+        imageUrl: product.imageUrl
+          ? (product.imageUrl.startsWith('http') ? product.imageUrl : (product.imageUrl.startsWith('/') ? product.imageUrl : `/${product.imageUrl}`))
+          : null,
+      });
     }
 
     res.status(405).json({ message: 'Method not allowed' });
