@@ -14,7 +14,8 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { id } = req.query;
+  let { id } = req.query;
+  if (Array.isArray(id)) id = id[0];
   if (!id) {
     res.status(400).json({ message: 'Product id is required' });
     return;
@@ -52,7 +53,13 @@ export default async function handler(req, res) {
         category: r.category,
         categories: [],
         imageUrl: r.image_url
-          ? (r.image_url.startsWith('http') ? r.image_url : (r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`))
+          ? (r.image_url.startsWith('http')
+              ? r.image_url
+              : (() => {
+                  const p = r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`;
+                  // Map attached_assets to assets for Vercel static hosting
+                  return p.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
+                })())
           : null,
         capacity: r.capacity,
         discountPercentage: 0,

@@ -43,7 +43,13 @@ export default async function handler(req, res) {
         category: r.category,
         categories: [],
         imageUrl: r.image_url
-          ? (r.image_url.startsWith('http') ? r.image_url : (r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`))
+          ? (r.image_url.startsWith('http')
+              ? r.image_url
+              : (() => {
+                  const p0 = r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`;
+                  const p1 = p0.replace(/\\/g, '/');
+                  return p1.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
+                })())
           : null,
         capacity: r.capacity,
         discountPercentage: 0,
@@ -74,7 +80,13 @@ export default async function handler(req, res) {
         category: inserted.category,
         categories: [],
         imageUrl: inserted.image_url
-          ? (inserted.image_url.startsWith('http') ? inserted.image_url : (inserted.image_url.startsWith('/') ? inserted.image_url : `/${inserted.image_url}`))
+          ? (inserted.image_url.startsWith('http')
+              ? inserted.image_url
+              : (() => {
+                  const p0 = inserted.image_url.startsWith('/') ? inserted.image_url : `/${inserted.image_url}`;
+                  const p1 = p0.replace(/\\/g, '/');
+                  return p1.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
+                })())
           : null,
         capacity: inserted.capacity,
         discountPercentage: 0,
