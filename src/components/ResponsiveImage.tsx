@@ -24,6 +24,8 @@ export default function ResponsiveImage({
   const [currentSrc, setCurrentSrc] = useState<string>(src);
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const FALLBACK_SRC = "/assets/10_1753734237960.png";
+  const [retryAttempted, setRetryAttempted] = useState(false);
 
   // Simplified image loading - remove unnecessary srcSet for better performance
   const generateSrcSet = (originalSrc: string) => {
@@ -58,6 +60,7 @@ export default function ResponsiveImage({
     // Reset states when src changes
     setIsLoaded(false);
     setHasError(false);
+    setRetryAttempted(false);
   }, [src]);
 
   const handleLoad = () => {
@@ -65,19 +68,29 @@ export default function ResponsiveImage({
   };
 
   const handleError = () => {
-    // Add retry logic - sometimes images fail due to network issues
-    setTimeout(() => {
-      const img = new Image();
-      img.onload = () => {
-        setHasError(false);
-        setIsLoaded(true);
-      };
-      img.onerror = () => {
-        setHasError(true);
-        setIsLoaded(true);
-      };
-      img.src = currentSrc;
-    }, 1000); // Retry after 1 second
+    // One lightweight retry, then fallback to default asset
+    if (!retryAttempted) {
+      setRetryAttempted(true);
+      setTimeout(() => {
+        const img = new Image();
+        img.onload = () => {
+          setHasError(false);
+          setIsLoaded(true);
+        };
+        img.onerror = () => {
+          // Swap to fallback if retry still fails
+          setCurrentSrc(FALLBACK_SRC);
+          setHasError(false);
+          setIsLoaded(false);
+        };
+        img.src = currentSrc;
+      }, 300); // quick retry
+    } else {
+      // Final fallback
+      setCurrentSrc(FALLBACK_SRC);
+      setHasError(false);
+      setIsLoaded(false);
+    }
   };
 
   // Determine appropriate sizes attribute
@@ -114,23 +127,7 @@ export default function ResponsiveImage({
         </div>
       )}
       
-      {/* Error state - retry button */}
-      {hasError && (
-        <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
-          <button 
-            onClick={() => {
-              setHasError(false);
-              setIsLoaded(false);
-              // Force reload the image
-              const timestamp = new Date().getTime();
-              setCurrentSrc(`${src}?t=${timestamp}`);
-            }}
-            className="text-gray-600 text-sm hover:text-gray-800 transition-colors"
-          >
-            Image unavailable - Click to retry
-          </button>
-        </div>
-      )}
+      {/* Error overlay removed: we automatically fallback to a default image */}
     </div>
   );
 }

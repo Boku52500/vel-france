@@ -71,6 +71,10 @@ function ProductDetailPage() {
       return response.json();
     },
     enabled: !!productId,
+    initialData: () => {
+      const list = queryClient.getQueryData<Product[]>(["/api/products"]) || [];
+      return list.find(p => String(p.id).trim().toLowerCase() === String(productId).trim().toLowerCase());
+    },
   });
 
   // Set page title and meta tags with product name
