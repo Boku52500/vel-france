@@ -66,7 +66,7 @@ function ProductDetailPage() {
   const { data: product, isLoading } = useQuery<Product>({
     queryKey: ["/api/products", productId],
     queryFn: async () => {
-      const response = await fetch(`/api/products/${productId}`);
+      const response = await fetch(`/api/products/${encodeURIComponent(productId!)}`);
       if (!response.ok) throw new Error("Product not found");
       return response.json();
     },

@@ -23,6 +23,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
+      console.log('API products/[id] request id=', id);
       const rows = await sql`
         SELECT 
           id,
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
           capacity,
           created_at
         FROM products 
-        WHERE id = ${id}
+        WHERE LOWER(TRIM(id)) = LOWER(TRIM(${id}))
         LIMIT 1
       `;
       if (!rows || rows.length === 0) {
@@ -53,13 +54,14 @@ export default async function handler(req, res) {
         category: r.category,
         categories: [],
         imageUrl: r.image_url
-          ? (r.image_url.startsWith('http')
-              ? r.image_url
-              : (() => {
-                  const p = r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`;
-                  // Map attached_assets to assets for Vercel static hosting
-                  return p.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
-                })())
+          ? (() => {
+              // Remove localhost host if present
+              const withoutHost = r.image_url.replace(/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?/i, '');
+              const p = withoutHost.startsWith('/') ? withoutHost : `/${withoutHost}`;
+              const p2 = p.replace(/\\/g, '/');
+              // Map attached_assets to assets for Vercel static hosting
+              return p2.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
+            })()
           : null,
         capacity: r.capacity,
         discountPercentage: 0,

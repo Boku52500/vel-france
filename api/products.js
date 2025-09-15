@@ -43,13 +43,24 @@ export default async function handler(req, res) {
         category: r.category,
         categories: [],
         imageUrl: r.image_url
-          ? (r.image_url.startsWith('http')
-              ? r.image_url
-              : (() => {
-                  const p0 = r.image_url.startsWith('/') ? r.image_url : `/${r.image_url}`;
-                  const p1 = p0.replace(/\\/g, '/');
-                  return p1.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
-                })())
+          ? (() => {
+              // Remove localhost host if present
+              let p = r.image_url.replace(/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?/i, '');
+              // Replace backslashes with slashes
+              p = p.replace(/\\/g, '/');
+              // Strip leading public/
+              p = p.replace(/^\/?public\//i, '/');
+              // Ensure leading slash
+              if (!p.startsWith('/')) p = `/${p}`;
+              // Map attached_assets to assets
+              p = p.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
+              // If it's a bare filename at root, assume assets
+              const parts = p.split('/').filter(Boolean);
+              if (parts.length === 1) {
+                p = `/assets/${parts[0]}`;
+              }
+              return p;
+            })()
           : null,
         capacity: r.capacity,
         discountPercentage: 0,
@@ -80,13 +91,18 @@ export default async function handler(req, res) {
         category: inserted.category,
         categories: [],
         imageUrl: inserted.image_url
-          ? (inserted.image_url.startsWith('http')
-              ? inserted.image_url
-              : (() => {
-                  const p0 = inserted.image_url.startsWith('/') ? inserted.image_url : `/${inserted.image_url}`;
-                  const p1 = p0.replace(/\\/g, '/');
-                  return p1.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
-                })())
+          ? (() => {
+              let p = inserted.image_url.replace(/^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\\d+)?/i, '');
+              p = p.replace(/\\/g, '/');
+              p = p.replace(/^\/?public\//i, '/');
+              if (!p.startsWith('/')) p = `/${p}`;
+              p = p.replace('/attached_assets/', '/assets/').replace(/^\/attached_assets\//, '/assets/');
+              const parts = p.split('/').filter(Boolean);
+              if (parts.length === 1) {
+                p = `/assets/${parts[0]}`;
+              }
+              return p;
+            })()
           : null,
         capacity: inserted.capacity,
         discountPercentage: 0,
